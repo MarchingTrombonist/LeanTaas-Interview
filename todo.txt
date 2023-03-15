@@ -1,0 +1,13 @@
+ISSUES
+    Make all datetime ISO 8601
+    remove notes in file
+    bad naming in dic
+        infin, infend??
+    some data in wrong col
+        ORDER_STATUS, chair, unnamed
+    many arrived but not completed
+    
+
+TODO
+    Check all checkin < chairstart < infstart < infend < chairout < checkout
+    check if cancelled then no times
