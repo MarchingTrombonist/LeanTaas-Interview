@@ -1,13 +1,15 @@
-ISSUES
-    Make all datetime ISO 8601
+ISSUES:
     remove notes in file
-    bad naming in dic
-        infin, infend??
     some data in wrong col
         ORDER_STATUS, chair, unnamed
     many arrived but not completed
-    
+    some appts have multiple rows
+        infend should be the same for all
+    DONE:
+        Make all datetime ISO 8601
+        bad naming in dic
+            infin, infend??
 
-TODO
+TODO:
     Check all checkin < chairstart < infstart < infend < chairout < checkout
     check if cancelled then no times
