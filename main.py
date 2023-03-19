@@ -1,11 +1,9 @@
 import pandas as pd
-from datetime import datetime as dt
 
 df = pd.read_csv("LeanTaaS_Infusion_Data_Analyst_Intern_Assignment.csv")
 
-print(df.head())
+# print(df.head())
 
-print(df.iloc[:, 7:16])
 # rename CHAIR_START to CHAIR_IN to match CHAIR_OUT
 df = df.rename(columns={"CHAIR_START": "CHAIR_IN"})
 
@@ -27,4 +25,16 @@ for col in ["APPT_DTTM", "CHECKIN_DTTM", "CHECKOUT_DTTM"]:
         "%Y-%m-%d %H:%M"
     )
 
-print(df.iloc[:, 7:16])
+
+# Add Notes column; move notes from descriptions
+dfSplit = df["ORDER_DESCRIPTION"].str.split("\n", n=1, expand=True)
+df["ORDER_DESCRIPTION"] = dfSplit[0]
+df.insert(17, "ORDER_NOTES", dfSplit[1])
+
+
+# Fix 11/4 extra column (column 20)
+badRows = df[~df.iloc[:, 20].isna()].index
+for colNum in range(18, 20):
+    df.iloc[badRows, colNum] = df.iloc[badRows, colNum + 1]
+
+df = df.iloc[:, ~df.columns.str.match("Unnamed")]
