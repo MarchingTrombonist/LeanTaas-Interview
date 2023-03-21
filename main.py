@@ -2,7 +2,7 @@ import pandas as pd
 
 df = pd.read_csv("LeanTaaS_Infusion_Data_Analyst_Intern_Assignment.csv")
 
-print(df.head())
+# print(df.head())
 
 # rename CHAIR_START to CHAIR_IN to match CHAIR_OUT
 df = df.rename(columns={"CHAIR_START": "CHAIR_IN"})
@@ -16,12 +16,15 @@ for col in ["CONTACT_DATE", "APPT_MADE_DATE", "APPT_CANC_DATE"]:
         "%Y-%m-%d"
     )
 
-# times
-for col in ["CHAIR_IN", "INFUSION_START", "INFUSION_END", "CHAIR_OUT"]:
-    df[col] = pd.to_datetime(df[col], infer_datetime_format=True).dt.strftime("%H:%M")
-
 # datetimes
 for col in ["APPT_DTTM", "CHECKIN_DTTM", "CHECKOUT_DTTM"]:
+    df[col] = pd.to_datetime(df[col], infer_datetime_format=True).dt.strftime(
+        "%Y-%m-%d %H:%M"
+    )
+
+# times
+for col in ["CHAIR_IN", "INFUSION_START", "INFUSION_END", "CHAIR_OUT"]:
+    df[col] = pd.to_datetime(df["APPT_DTTM"]).dt.strftime("%Y-%m-%d ") + df[col]
     df[col] = pd.to_datetime(df[col], infer_datetime_format=True).dt.strftime(
         "%Y-%m-%d %H:%M"
     )
@@ -41,22 +44,71 @@ for colNum in range(18, 20):
 df = df.iloc[:, ~df.columns.str.match("Unnamed")]
 
 # Check that all appointments follow the correct order
-# checkin < chairstart < infstart < infend < chairout < checkout
+# CHECKIN_DTTM < CHAIR_IN < INFUSION_START < INFUSION_END < CHAIR_OUT < CHECKOUT_DTTM
 # Col Indices: 8, 12, 13, 14, 15, 9
+# ["CHECKIN_DTTM","CHAIR_IN","INFUSION_START","INFUSION_END","CHECKOUT_DTTM"]
 # Split by appt status
-def checkOrder(df):
-    return df.iloc[3, [8, 12, 13, 14, 15, 9]].is_monotonic_increasing
 
+# Returns all rows where all times exist and are in an increasing order
+# Both removes rows with nans and rows where times are out of order
+# Can probably be optimized, but I couldn't figure out a way to use pandas parsing
+# .is_monotonic_increasing is an attribute, not a function, so apply() doesn't work
+df_ordered = df.iloc[
+    [
+        row
+        for row in df.index
+        if (df.iloc[row, [8, 12, 13, 14, 9]].is_monotonic_increasing)
+    ],
+    :,
+]
 
-print(checkOrder(df))
-dfGrouped = df.groupby(df["APPT_STATUS_NAME"])
-print(list(dfGrouped.groups))
-for group in dfGrouped.groups:
-    print(group)
-    print(dfGrouped.get_group(group).iloc[:, [8, 12, 13, 14, 15, 9]])
+# # Arrived: 1 appt
+# print(
+#     df_ordered[df_ordered["APPT_STATUS_NAME"] == "Arrived"].iloc[
+#         :, [5, 8, 12, 13, 14, 9]
+#     ]
+# )
+# # Cancelled: 0 appt
+# print(
+#     df_ordered[df_ordered["APPT_STATUS_NAME"] == "Cancelled"].iloc[
+#         :, [5, 8, 12, 13, 14, 9]
+#     ]
+# )
+# # Completed: 140 appt
+# print(
+#     df_ordered[df_ordered["APPT_STATUS_NAME"] == "Completed"].iloc[
+#         :, [5, 8, 12, 13, 14, 9]
+#     ]
+# )
+# # Scheduled: 0 appt
+# print(
+#     df_ordered[df_ordered["APPT_STATUS_NAME"] == "Scheduled"].iloc[
+#         :, [5, 8, 12, 13, 14, 9]
+#     ]
+# )
 
-# Arrived
-# Should not be any, as all appts should be completed at this point
+# print(df.columns.values)
+# df.to_csv("Infusion_Fixed.csv")
 
-print(df.columns.values)
-df.to_csv("Infusion_Fixed.csv")
+dfGrouped = df
+for col in [
+    "CHECKIN_DTTM",
+    "CHAIR_IN",
+    "INFUSION_START",
+    "INFUSION_END",
+    "CHECKOUT_DTTM",
+]:
+    dfGrouped[col] = dfGrouped.groupby("INPATIENT_DATA_ID_x")[col].max()
+
+print(
+    dfGrouped[
+        [
+            "INPATIENT_DATA_ID_x",
+            "CHECKIN_DTTM",
+            "CHAIR_IN",
+            "INFUSION_START",
+            "INFUSION_END",
+            "CHECKOUT_DTTM",
+        ]
+    ]
+)
