@@ -16,6 +16,8 @@ TODO:
     check if cancelled then no times
     compare infend times for same appt
     look at arrived but not completed
+    Make all times datetimes
+    Make into SQL database
 
 DONE:
     remove notes; move to new col

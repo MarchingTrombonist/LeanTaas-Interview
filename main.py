@@ -2,12 +2,13 @@ import pandas as pd
 
 df = pd.read_csv("LeanTaaS_Infusion_Data_Analyst_Intern_Assignment.csv")
 
-# print(df.head())
+print(df.head())
 
 # rename CHAIR_START to CHAIR_IN to match CHAIR_OUT
 df = df.rename(columns={"CHAIR_START": "CHAIR_IN"})
 
 # Convert all datetimes to %Y-%m-%d %H:%M
+# Make all times datetimes using the appt date
 
 # dates
 for col in ["CONTACT_DATE", "APPT_MADE_DATE", "APPT_CANC_DATE"]:
@@ -38,3 +39,24 @@ for colNum in range(18, 20):
     df.iloc[badRows, colNum] = df.iloc[badRows, colNum + 1]
 
 df = df.iloc[:, ~df.columns.str.match("Unnamed")]
+
+# Check that all appointments follow the correct order
+# checkin < chairstart < infstart < infend < chairout < checkout
+# Col Indices: 8, 12, 13, 14, 15, 9
+# Split by appt status
+def checkOrder(df):
+    return df.iloc[3, [8, 12, 13, 14, 15, 9]].is_monotonic_increasing
+
+
+print(checkOrder(df))
+dfGrouped = df.groupby(df["APPT_STATUS_NAME"])
+print(list(dfGrouped.groups))
+for group in dfGrouped.groups:
+    print(group)
+    print(dfGrouped.get_group(group).iloc[:, [8, 12, 13, 14, 15, 9]])
+
+# Arrived
+# Should not be any, as all appts should be completed at this point
+
+print(df.columns.values)
+df.to_csv("Infusion_Fixed.csv")
