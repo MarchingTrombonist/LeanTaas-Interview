@@ -21,7 +21,7 @@ for colNum in range(18, 20):
 
 df = df.iloc[:, ~df.columns.str.match("Unnamed")]
 
-# Convert all datetimes to %Y-%m-%d %H:%M
+# Convert all datetimes to the same format
 # Make all times datetimes using the checkin
 
 # dates
@@ -39,10 +39,10 @@ for col in ["CHAIR_IN", "INFUSION_START", "INFUSION_END", "CHAIR_OUT"]:
     df[col] = pd.to_datetime(df["CHECKIN_DTTM"]).dt.strftime("%Y-%m-%d ") + df[col]
     df[col] = pd.to_datetime(df[col], infer_datetime_format=True)
 
-
 # Removes rows with dates outside of range (using ~> instead of < ignores nans)
+startDate = pd.to_datetime("2021-10-31 00:00:00")
+endDate = pd.to_datetime("2021-11-04 23:59:59")
 for col in [
-    "APPT_DTTM",
     "CHECKIN_DTTM",
     "CHECKOUT_DTTM",
     "CHAIR_IN",
@@ -50,9 +50,13 @@ for col in [
     "INFUSION_END",
     "CHAIR_OUT",
 ]:
-    df = df[~(df[col] > "2021-11-04")]
-    df = df[~(df[col] < "2021-10-31")]
+    # print(df[(df[col] > endDate)][["INPATIENT_DATA_ID_x", col]])
+    # print(df[(df[col] < startDate)][["INPATIENT_DATA_ID_x", col]])
+    df = df[~(df[col] > endDate)]
+    df = df[~(df[col] < startDate)]
 
+# Drops all duplicate appt rows
+# This allows calculation based on appointments, not infusions
 dfAppt = df.drop_duplicates("INPATIENT_DATA_ID_x")[
     [
         "INPATIENT_DATA_ID_x",
@@ -69,6 +73,7 @@ dfAppt = df.drop_duplicates("INPATIENT_DATA_ID_x")[
     ]
 ]
 
+# Sets time values to min and max of all appointment rows
 for appt in dfAppt["INPATIENT_DATA_ID_x"]:
     for colName in ["CHECKIN_DTTM", "CHAIR_IN", "INFUSION_START"]:
         dfAppt.loc[dfAppt["INPATIENT_DATA_ID_x"] == appt, colName] = (
@@ -79,14 +84,18 @@ for appt in dfAppt["INPATIENT_DATA_ID_x"]:
             df.loc[df["INPATIENT_DATA_ID_x"] == appt, colName].dropna().max()
         )
 
-# Remove any times that are impossible
+# Remove any times that are impossible (occurring out of order)
 df_ordered = dfAppt[~(dfAppt["CHECKIN_DTTM"] > dfAppt["CHAIR_IN"])]
 df_ordered = df_ordered[~(df_ordered["CHAIR_IN"] > df_ordered["INFUSION_START"])]
 df_ordered = df_ordered[~(df_ordered["INFUSION_START"] > df_ordered["INFUSION_END"])]
-df_ordered = df_ordered[~(df_ordered["INFUSION_END"] > df_ordered["CHECKOUT_DTTM"])]
+df_ordered = df_ordered[~(df_ordered["INFUSION_END"] > df_ordered["CHAIR_OUT"])]
+df_ordered = df_ordered[~(df_ordered["CHAIR_OUT"] > df_ordered["CHECKOUT_DTTM"])]
 
-df_ordered["APPT_DELTA"] = df_ordered["INFUSION_END"] - df_ordered["CHECKIN_DTTM"]
+# Create total appt time and total wait time columns
+df_ordered["APPT_DELTA"] = df_ordered["INFUSION_END"] - df_ordered["CHAIR_IN"]
 df_ordered["WAIT_TIME"] = df_ordered["CHAIR_IN"] - df_ordered["CHECKIN_DTTM"]
+
+# Sort by wait time and print table and mean
 print(
     df_ordered[
         [
@@ -101,4 +110,31 @@ print(
     .dropna()
     .sort_values("WAIT_TIME")
 )
-print(df_ordered["WAIT_TIME"].dropna().mean())
+print(
+    "After checking in, the average patient waits "
+    + str(df_ordered["WAIT_TIME"].dropna().mean().round("S"))
+    + " before entering the chair."
+)
+print(
+    "The average patient is "
+    + str(
+        (df_ordered["CHECKIN_DTTM"] - df_ordered["APPT_DTTM"])
+        .dropna()
+        .mean()
+        .round("S")
+    )
+    + " late to their appointment."
+)
+print(
+    "The average appointment is "
+    + str(
+        (
+            df_ordered["APPT_DELTA"]
+            - pd.to_timedelta(df_ordered["APPT_LENGTH"], "minutes")
+        )
+        .dropna()
+        .mean()
+        .round("S")
+    )
+    + " longer than scheduled."
+)
