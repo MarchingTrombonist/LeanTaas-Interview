@@ -3,8 +3,6 @@ import numpy as np
 
 df = pd.read_csv("LeanTaaS_Infusion_Data_Analyst_Intern_Assignment.csv")
 
-# print(df.head())
-
 # rename CHAIR_START to CHAIR_IN to match CHAIR_OUT
 df = df.rename(columns={"CHAIR_START": "CHAIR_IN"})
 
@@ -50,8 +48,6 @@ for col in [
     "INFUSION_END",
     "CHAIR_OUT",
 ]:
-    # print(df[(df[col] > endDate)][["INPATIENT_DATA_ID_x", col]])
-    # print(df[(df[col] < startDate)][["INPATIENT_DATA_ID_x", col]])
     df = df[~(df[col] > endDate)]
     df = df[~(df[col] < startDate)]
 
@@ -91,11 +87,10 @@ df_ordered = df_ordered[~(df_ordered["INFUSION_START"] > df_ordered["INFUSION_EN
 df_ordered = df_ordered[~(df_ordered["INFUSION_END"] > df_ordered["CHAIR_OUT"])]
 df_ordered = df_ordered[~(df_ordered["CHAIR_OUT"] > df_ordered["CHECKOUT_DTTM"])]
 
-# Create total appt time and total wait time columns
-df_ordered["APPT_DELTA"] = df_ordered["INFUSION_END"] - df_ordered["CHAIR_IN"]
+# Create wait time column
 df_ordered["WAIT_TIME"] = df_ordered["CHAIR_IN"] - df_ordered["CHECKIN_DTTM"]
 
-# Sort by wait time and print table and mean
+# Sort by wait time and print table
 print(
     df_ordered[
         [
@@ -104,12 +99,13 @@ print(
             "CHAIR_IN",
             "INFUSION_END",
             "WAIT_TIME",
-            "APPT_DELTA",
         ]
     ]
     .dropna()
     .sort_values("WAIT_TIME")
 )
+
+# Print final calculations
 print(
     "After checking in, the average patient waits "
     + str(df_ordered["WAIT_TIME"].dropna().mean().round("S"))
@@ -129,7 +125,7 @@ print(
     "The average appointment is "
     + str(
         (
-            df_ordered["APPT_DELTA"]
+            (df_ordered["INFUSION_END"] - df_ordered["CHAIR_IN"])
             - pd.to_timedelta(df_ordered["APPT_LENGTH"], "minutes")
         )
         .dropna()
@@ -138,3 +134,6 @@ print(
     )
     + " longer than scheduled."
 )
+
+# Saves final dataframe
+dfAppt.to_csv("Infusion_Data_Fixed.csv")
