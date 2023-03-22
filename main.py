@@ -79,13 +79,26 @@ for appt in dfAppt["INPATIENT_DATA_ID_x"]:
             df.loc[df["INPATIENT_DATA_ID_x"] == appt, colName].dropna().max()
         )
 
-# Remove any with infusions that end before they've checked in
-df_ordered = dfAppt[dfAppt["CHECKIN_DTTM"] < dfAppt["INFUSION_END"]]
+# Remove any times that are impossible
+df_ordered = dfAppt[~(dfAppt["CHECKIN_DTTM"] > dfAppt["CHAIR_IN"])]
+df_ordered = df_ordered[~(df_ordered["CHAIR_IN"] > df_ordered["INFUSION_START"])]
+df_ordered = df_ordered[~(df_ordered["INFUSION_START"] > df_ordered["INFUSION_END"])]
+df_ordered = df_ordered[~(df_ordered["INFUSION_END"] > df_ordered["CHECKOUT_DTTM"])]
 
 df_ordered["APPT_DELTA"] = df_ordered["INFUSION_END"] - df_ordered["CHECKIN_DTTM"]
+df_ordered["WAIT_TIME"] = df_ordered["CHAIR_IN"] - df_ordered["CHECKIN_DTTM"]
 print(
-    df_ordered[["INPATIENT_DATA_ID_x", "INFUSION_END", "CHECKIN_DTTM", "APPT_DELTA"]]
+    df_ordered[
+        [
+            "INPATIENT_DATA_ID_x",
+            "CHECKIN_DTTM",
+            "CHAIR_IN",
+            "INFUSION_END",
+            "WAIT_TIME",
+            "APPT_DELTA",
+        ]
+    ]
     .dropna()
-    .sort_values("APPT_DELTA")
+    .sort_values("WAIT_TIME")
 )
-print(df_ordered["APPT_DELTA"].dropna().mean())
+print(df_ordered["WAIT_TIME"].dropna().mean())
